@@ -250,6 +250,7 @@ def dummy_parallel_binary_pipeline_class(dummy_classifier_estimator_class):
 
     return MockBinaryClassificationPipeline
 
+
 @pytest.fixture
 def dummy_multiclass_pipeline_class(dummy_classifier_estimator_class):
     MockEstimator = dummy_classifier_estimator_class

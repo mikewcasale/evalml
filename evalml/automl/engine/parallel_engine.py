@@ -1,6 +1,6 @@
-from evalml.automl.engine import EngineBase
-from dask import delayed
 from dask.distributed import Client, as_completed
+
+from evalml.automl.engine import EngineBase
 
 
 class ParallelEngine(EngineBase):
@@ -19,9 +19,9 @@ class ParallelEngine(EngineBase):
             n_workers (int): how many workers to use for the ParallelEngine's Dask client
         """
         super().__init__(X_train=X_train, y_train=y_train, automl=automl,
-                       should_continue_callback=should_continue_callback,
-                       pre_evaluation_callback=pre_evaluation_callback,
-                       post_evaluation_callback=post_evaluation_callback)
+                         should_continue_callback=should_continue_callback,
+                         pre_evaluation_callback=pre_evaluation_callback,
+                         post_evaluation_callback=post_evaluation_callback)
         self.client = Client(n_workers=n_workers)
 
     def evaluate_batch(self, pipelines):
@@ -33,25 +33,21 @@ class ParallelEngine(EngineBase):
         Returns:
             list (int): a list of the new pipeline IDs which were created by the AutoML search.
         """
-        # super().evaluate_batch()
-        # result = EngineResult()
+        if self.X_train is None or self.y_train is None:
+            raise ValueError("Dataset has not been loaded into the engine.")
 
         if self._pre_evaluation_callback:
             for pipeline in pipelines:
                 self._pre_evaluation_callback(pipeline)
 
-        dask_pipelines = []
-        while len(pipelines) > 0:
-            dask_pipelines.append(pipelines.pop())
-
         # def train_and_score_pipeline(pipeline, automl, full_X_train, full_y_train):
         #     self.train_and_score_pipeline(pipeline, automl, full_X_train, full_y_train)
         #     return pipeline, func(pipeline, automl, full_X_train, full_y_train)
 
-        pipeline_futures = self.client.map(self.train_and_score_pipeline, dask_pipelines, automl=self.automl,
+        pipeline_futures = self.client.map(self.train_and_score_pipeline, pipelines, automl=self.automl,
                                            full_X_train=self.X_train, full_y_train=self.y_train)
 
-        new_pipeline_ids=[]
+        new_pipeline_ids = []
         for future in as_completed(pipeline_futures):
             evaluation_result = future.result()
             new_pipeline_ids.append(self._post_evaluation_callback(pipeline, evaluation_result))
