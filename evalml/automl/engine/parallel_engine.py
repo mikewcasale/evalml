@@ -6,7 +6,8 @@ from evalml.automl.engine import EngineBase
 class ParallelEngine(EngineBase):
     """A parallel engine for the AutoML search. Trains and scores pipelines locally, in parallel."""
 
-    def __init__(self, X_train=None, y_train=None, automl=None, should_continue_callback=None, pre_evaluation_callback=None, post_evaluation_callback=None, n_workers=4):
+    def __init__(self, X_train=None, y_train=None, automl=None, should_continue_callback=None, pre_evaluation_callback=None,
+                 post_evaluation_callback=None, n_workers=4):
         """Base class for the engine API which handles the fitting and evaluation of pipelines during AutoML.
 
         Arguments:
@@ -17,11 +18,17 @@ class ParallelEngine(EngineBase):
             pre_evaluation_callback (function): optional callback invoked before pipeline evaluation.
             post_evaluation_callback (function): optional callback invoked after pipeline evaluation, with args pipeline and evaluation results. Expected to return a list of pipeline IDs corresponding to each pipeline evaluation.
             n_workers (int): how many workers to use for the ParallelEngine's Dask client
+
+        Raises:
+            ValueError: if n_workers is not a positive integer greater than or equal to 1.
         """
         super().__init__(X_train=X_train, y_train=y_train, automl=automl,
                          should_continue_callback=should_continue_callback,
                          pre_evaluation_callback=pre_evaluation_callback,
                          post_evaluation_callback=post_evaluation_callback)
+
+        if n_workers < 1 or not isinstance(n_workers, int):
+            raise ValueError("n_workers must be a positive integer.")
         self.client = Client(n_workers=n_workers)
 
     def evaluate_batch(self, pipelines):

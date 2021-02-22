@@ -13,6 +13,23 @@ def test_evaluate_no_data():
         engine.evaluate_batch([])
 
 
+def test_set_client_workers(X_y_binary):
+    X, y = X_y_binary
+
+    # Test that n_workers passes through to underlying engine and client
+    for n_workers in range(1, 8):
+        engine = ParallelEngine(X_train=X, y_train=y, n_workers=n_workers)
+        assert len(engine.client.ncores()) == n_workers
+
+    # Test that a negative n_workers errors
+    with pytest.raises(ValueError, match="n_workers must be a positive integer"):
+        engine = ParallelEngine(X_train=X, y_train=y, n_workers=-1)
+
+    # Test that a non integer n_workers errors
+    with pytest.raises(ValueError, match="n_workers must be a positive integer"):
+        engine = ParallelEngine(X_train=X, y_train=y, n_workers=1.1)
+
+
 def test_evaluate_batch(dummy_parallel_binary_pipeline_class, X_y_binary):
     X, y = X_y_binary
     automl = AutoMLSearch(X_train=X, y_train=y, problem_type='binary', max_time=1, max_batches=1,
@@ -39,7 +56,7 @@ def test_evaluate_batch(dummy_parallel_binary_pipeline_class, X_y_binary):
     assert new_pipeline_ids == [123, 456]
     assert mock_pre_evaluation_callback.call_args_list[0][0][0] == pipelines[0]
     assert mock_pre_evaluation_callback.call_args_list[1][0][0] == pipelines[1]
-    assert mock_post_evaluation_callback.call_args_list[0][0][0] in pipelines
+    assert mock_post_evaluation_callback.call_args_list[0][0][0] in pipelines  # order is not guaranteed given parallel evaluation
     assert mock_post_evaluation_callback.call_args_list[0][0][1]['cv_score_mean'] == 0.42
     assert mock_post_evaluation_callback.call_args_list[1][0][0] in pipelines
     assert mock_post_evaluation_callback.call_args_list[1][0][1]['cv_score_mean'] == 0.42
