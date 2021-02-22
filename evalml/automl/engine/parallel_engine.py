@@ -1,6 +1,13 @@
+from collections import namedtuple
+from copy import deepcopy
+
 from dask.distributed import Client, as_completed
 
 from evalml.automl.engine import EngineBase
+from evalml.automl.engine.engine_base import train_and_score_pipeline
+
+AutoMLSearch = namedtuple("AutoML",
+                          "data_splitter problem_type objective additional_objectives optimize_thresholds error_callback random_seed")
 
 
 class ParallelEngine(EngineBase):
@@ -47,8 +54,11 @@ class ParallelEngine(EngineBase):
             for pipeline in pipelines:
                 self._pre_evaluation_callback(pipeline)
 
-        pipeline_futures = self.client.map(self.train_and_score_pipeline, pipelines, automl=self.automl,
-                                           full_X_train=self.X_train, full_y_train=self.y_train)
+        automl = AutoMLSearch(self.automl.data_splitter, self.automl.problem_type, self.automl.objective,
+                              self.automl.additional_objectives, self.automl.optimize_thresholds, self.automl.error_callback,
+                              self.automl.random_seed)
+        pipeline_futures = self.client.map(train_and_score_pipeline, pipelines, automl=automl,
+                                           full_X_train=deepcopy(self.X_train), full_y_train=deepcopy(self.y_train))
 
         new_pipeline_ids = []
         for future in as_completed(pipeline_futures):
