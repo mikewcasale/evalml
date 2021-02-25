@@ -6,8 +6,8 @@ from dask.distributed import Client, as_completed
 from evalml.automl.engine import EngineBase
 from evalml.automl.engine.engine_base import train_and_score_pipeline
 
-AutoMLSearch = namedtuple("AutoML",
-                          "data_splitter problem_type objective additional_objectives optimize_thresholds error_callback random_seed")
+AutoMLSearchStruct = namedtuple("AutoML",
+                                "data_splitter problem_type objective additional_objectives optimize_thresholds error_callback random_seed")
 
 
 class ParallelEngine(EngineBase):
@@ -50,19 +50,23 @@ class ParallelEngine(EngineBase):
         if self.X_train is None or self.y_train is None:
             raise ValueError("Dataset has not been loaded into the engine.")
 
+        if self.automl.max_iterations:
+            pipelines = pipelines[0:self.automl.max_iterations - 1]
+
         if self._pre_evaluation_callback:
             for pipeline in pipelines:
                 self._pre_evaluation_callback(pipeline)
 
-        automl = AutoMLSearch(self.automl.data_splitter, self.automl.problem_type, self.automl.objective,
-                              self.automl.additional_objectives, self.automl.optimize_thresholds, self.automl.error_callback,
-                              self.automl.random_seed)
+        automl = AutoMLSearchStruct(self.automl.data_splitter, self.automl.problem_type, self.automl.objective,
+                                    self.automl.additional_objectives, self.automl.optimize_thresholds, self.automl.error_callback,
+                                    self.automl.random_seed)
         pipeline_futures = self.client.map(train_and_score_pipeline, pipelines, automl=automl,
-                                           full_X_train=deepcopy(self.X_train), full_y_train=deepcopy(self.y_train))
+                                           full_X_train=deepcopy(self.X_train), full_y_train=deepcopy(self.y_train), return_pipeline=True)
 
         new_pipeline_ids = []
+        eval_results = []
         for future in as_completed(pipeline_futures):
-            evaluation_result = future.result()
+            evaluation_result, pipeline = future.result()
             new_pipeline_ids.append(self._post_evaluation_callback(pipeline, evaluation_result))
-
+            eval_results.append(evaluation_result)
         return new_pipeline_ids

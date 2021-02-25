@@ -18,7 +18,7 @@ from evalml.utils.woodwork_utils import _convert_woodwork_types_wrapper
 logger = get_logger(__file__)
 
 
-def train_and_score_pipeline(pipeline, automl, full_X_train, full_y_train):
+def train_and_score_pipeline(pipeline, automl, full_X_train, full_y_train, return_pipeline=False):
     """Given a pipeline, config and data, train and score the pipeline and return the CV or TV scores
 
     Arguments:
@@ -26,9 +26,12 @@ def train_and_score_pipeline(pipeline, automl, full_X_train, full_y_train):
         automl (AutoMLSearch): the AutoML search, used to access config and for the error callback
         full_X_train (ww.DataTable): training features
         full_y_train (ww.DataColumn): training target
+        return_pipeline (bool): whether to return the pipeline as the second argument, packaged with
+            the results
 
     Returns:
         dict: a dict containing cv_score_mean, cv_scores, training_time and a cv_data structure with details.
+        evalml.pipeline.Pipeline: if return_pipeline is true, passes through the pipeline used
     """
     start = time.time()
     cv_data = []
@@ -103,7 +106,12 @@ def train_and_score_pipeline(pipeline, automl, full_X_train, full_y_train):
     cv_scores = pd.Series([fold['score'] for fold in cv_data])
     cv_score_mean = cv_scores.mean()
     logger.info(f"\tFinished cross validation - mean {automl.objective.name}: {cv_score_mean:.3f}")
-    return {'cv_data': cv_data, 'training_time': training_time, 'cv_scores': cv_scores, 'cv_score_mean': cv_score_mean}
+
+    result = {'cv_data': cv_data, 'training_time': training_time, 'cv_scores': cv_scores, 'cv_score_mean': cv_score_mean}
+    if return_pipeline:
+        return result, pipeline
+    else:
+        return result
 
 
 class EngineBase(ABC):

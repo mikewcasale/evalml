@@ -95,9 +95,25 @@ def test_data_splitter(X_y_binary):
 def test_max_iterations(X_y_binary):
     X, y = X_y_binary
     max_iterations = 5
-    automl = AutoMLSearch(X_train=X, y_train=y, problem_type='binary', max_iterations=max_iterations, n_jobs=1)
-    automl.search()
-    assert len(automl.full_rankings) == max_iterations
+
+    # Sequential
+    sequential_automl = AutoMLSearch(X_train=X, y_train=y, problem_type='binary',
+                                     max_iterations=max_iterations, n_jobs=1, engine="sequential")
+    sequential_automl.search()
+    assert len(sequential_automl.full_rankings) == max_iterations
+
+    # Parallel
+    parallel_automl = AutoMLSearch(X_train=X, y_train=y, problem_type='binary',
+                                   max_iterations=max_iterations, n_jobs=1, engine="parallel")
+    parallel_automl.search()
+    assert len(parallel_automl.full_rankings) == max_iterations
+
+    # Compare Sequential and Parallel Ranking Values
+    sequential_rankings = sequential_automl.full_rankings
+    sequential_rankings.set_index("id")
+    parallel_rankings = parallel_automl.full_rankings
+    parallel_rankings.set_index("id")
+    assert all(parallel_rankings == sequential_rankings)
 
 
 def test_recall_error(X_y_binary):
